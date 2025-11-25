@@ -11,8 +11,8 @@ interface ChartWidgetProps {
 }
 
 export function ChartWidget({ title, option, className }: ChartWidgetProps) {
-  // Heatmap và các biểu đồ lớn cần chiều cao lớn hơn
-  const isLargeChart = title.includes("Heatmap") || title.includes("Ma trận");
+  // Heatmap and large charts need more height
+  const isLargeChart = title.includes("Heatmap") || title.includes("Correlation Matrix");
   const chartHeight = isLargeChart ? '500px' : '300px';
   
   return (

@@ -31,22 +31,22 @@ function AnalyticsContent() {
         console.log("API Response:", response.data);
         
         if (response.data.status === 'SUCCESS') {
-          // Dừng polling khi thành công
+          // Stop polling when successful
           if (pollingInterval) {
             clearInterval(pollingInterval);
           }
           
-          // Kiểm tra cấu trúc response
+          // Check response structure
           const resultData = response.data.result;
           console.log("Result data:", resultData);
           
-          // Có thể result.data hoặc result trực tiếp
+          // Could be result.data or result directly
           if (resultData && resultData.data) {
             setData(resultData.data);
           } else if (resultData) {
             setData(resultData);
           } else {
-            setError("Dữ liệu không hợp lệ từ server");
+            setError("Invalid data from server");
           }
           setLoading(false);
         } else if (response.data.status === 'FAILURE') {
@@ -56,16 +56,16 @@ function AnalyticsContent() {
             setError(response.data.error || "Analysis failed with unknown error");
             setLoading(false);
         } else if (response.data.status === 'PENDING' || response.data.status === 'PROCESSING') {
-            // Vẫn đang xử lý, tiếp tục polling
+            // Still processing, continue polling
             pollCount++;
             if (pollCount >= MAX_POLLS) {
               if (pollingInterval) {
                 clearInterval(pollingInterval);
               }
-              setError("Quá trình xử lý mất quá nhiều thời gian. Vui lòng thử lại.");
+              setError("Processing took too long. Please try again.");
               setLoading(false);
             }
-            // Tiếp tục polling (đã được setup ở dưới)
+            // Continue polling (already setup below)
         }
       } catch (error: any) {
         if (pollingInterval) {
@@ -77,10 +77,10 @@ function AnalyticsContent() {
       }
     };
 
-    // Fetch ngay lập tức
+    // Fetch immediately
     fetchData();
     
-    // Setup polling nếu chưa có kết quả
+    // Setup polling if no result yet
     pollingInterval = setInterval(() => {
       fetchData();
     }, 2000);
@@ -110,15 +110,15 @@ function AnalyticsContent() {
     return <div className="p-12 text-center">No data found or analysis still processing.</div>;
   }
 
-  // Debug: Log dữ liệu để kiểm tra
+  // Debug: Log data to check
   console.log("Analytics Data:", data);
   console.log("Description keys:", data.description ? Object.keys(data.description) : "No description");
   console.log("Columns:", data.columns);
 
-  // Tạo nhiều loại biểu đồ tự động dựa trên dữ liệu
+  // Create multiple chart types automatically based on data
   const chartOptions = [];
 
-  // Kiểm tra xem data.description có tồn tại không
+  // Check if data.description exists
   if (!data.description || typeof data.description !== 'object') {
     return (
       <div className="space-y-8">
@@ -129,33 +129,33 @@ function AnalyticsContent() {
           </div>
         </div>
         <div className="text-center p-12 text-red-500">
-          Lỗi: Dữ liệu mô tả không hợp lệ. Không thể tạo biểu đồ.
+          Error: Invalid description data. Cannot create charts.
           <pre className="mt-4 text-xs text-left overflow-auto">{JSON.stringify(data, null, 2)}</pre>
         </div>
       </div>
     );
   }
 
-  // Lấy danh sách các cột số và cột phân loại từ description
+  // Get list of numeric and categorical columns from description
   const numericCols = Object.keys(data.description || {}).filter(col => {
     const desc = data.description[col];
     return desc && typeof desc === 'object' && ('mean' in desc || 'count' in desc || '25%' in desc);
   });
   
-  // Cải thiện nhận diện cột số từ dữ liệu preview (nếu description không nhận diện được)
+  // Improve numeric column detection from preview data (if description doesn't detect them)
   const inferredNumericCols = data.columns.filter((col: string) => {
     if (numericCols.includes(col)) return true;
     if (!data.preview || data.preview.length === 0) return false;
     
-    // Lấy mẫu 10 giá trị
+    // Get sample of 10 values
     const sampleValues = data.preview.slice(0, 10).map((row: any) => row[col]);
     const validValues = sampleValues.filter((v: any) => v !== null && v !== undefined && v !== '');
     
     if (validValues.length === 0) return false;
     
-    // Kiểm tra xem có thể parse sang số không
+    // Check if can parse to number
     const numericCount = validValues.filter((v: any) => !isNaN(parseFloat(v)) && isFinite(v)).length;
-    return numericCount === validValues.length; // Nếu tất cả giá trị mẫu đều là số
+    return numericCount === validValues.length; // If all sample values are numbers
   });
 
   const effectiveNumericCols = Array.from(new Set([...numericCols, ...inferredNumericCols]));
@@ -164,34 +164,34 @@ function AnalyticsContent() {
   console.log("Original Numeric cols:", numericCols);
   console.log("Effective Numeric cols:", effectiveNumericCols);
   
-  // --- NHÓM BIỂU ĐỒ LUÔN HIỂN THỊ (KHÔNG CẦN ĐIỀU KIỆN KHẮT KHE) ---
+  // --- CHARTS ALWAYS DISPLAYED (NO STRICT CONDITIONS) ---
 
   // 0. Data Overview (Pie Chart)
   const otherColsCount = (data.columns?.length || 0) - effectiveNumericCols.length - effectiveCategoricalCols.length;
   chartOptions.push({
-    title: "Cấu trúc dữ liệu (Data Types)",
+    title: "Data Structure (Data Types)",
     option: {
       tooltip: { trigger: 'item' },
       legend: { top: '5%', left: 'center' },
       series: [{
-        name: 'Loại cột',
+        name: 'Column Type',
         type: 'pie',
         radius: ['40%', '70%'],
         avoidLabelOverlap: false,
         itemStyle: { borderRadius: 10, borderColor: '#fff', borderWidth: 2 },
         label: { show: true, formatter: '{b}: {c}' },
         data: [
-          { value: effectiveNumericCols.length, name: 'Số (Numeric)' },
-          { value: effectiveCategoricalCols.length, name: 'Phân loại (Categorical)' },
-          { value: otherColsCount > 0 ? otherColsCount : 0, name: 'Khác' }
+          { value: effectiveNumericCols.length, name: 'Numeric' },
+          { value: effectiveCategoricalCols.length, name: 'Categorical' },
+          { value: otherColsCount > 0 ? otherColsCount : 0, name: 'Other' }
         ].filter(item => item.value > 0)
       }]
     }
   });
 
-  // 0.1. Data Volume (Gauge Chart) - Luôn hiển thị số lượng dòng
+  // 0.1. Data Volume (Gauge Chart) - Always display row count
   chartOptions.push({
-      title: "Quy mô dữ liệu (Rows)",
+      title: "Data Volume (Rows)",
       option: {
           tooltip: { formatter: '{a} <br/>{b} : {c}' },
           series: [{
@@ -199,23 +199,23 @@ function AnalyticsContent() {
               type: 'gauge',
               max: Math.max(data.rows * 1.2, 100),
               detail: { formatter: '{value}' },
-              data: [{ value: data.rows, name: 'Tổng số dòng' }]
+              data: [{ value: data.rows, name: 'Total Rows' }]
           }]
       }
   });
 
-  // 0.2. Missing Values Analysis (Bar Chart) - Luôn hiển thị tình trạng dữ liệu
+  // 0.2. Missing Values Analysis (Bar Chart) - Always display data quality
   if (data.preview && data.preview.length > 0) {
       const nullCounts: Record<string, number> = {};
       data.columns.forEach((col: string) => {
-          // Đếm số null/empty trong preview (ước lượng)
+          // Count null/empty in preview (estimate)
           nullCounts[col] = data.preview.filter((row: any) => row[col] === null || row[col] === undefined || row[col] === '').length;
       });
       
       const nullData = Object.entries(nullCounts).filter(([, count]) => count > 0);
       if (nullData.length > 0) {
           chartOptions.push({
-              title: "Chất lượng dữ liệu (Missing Values - Preview)",
+              title: "Data Quality (Missing Values - Preview)",
               option: {
                   tooltip: { trigger: 'axis' },
                   xAxis: { type: 'category', data: nullData.map(d => d[0]), axisLabel: { rotate: -45 } },
@@ -224,19 +224,19 @@ function AnalyticsContent() {
                       data: nullData.map(d => d[1]),
                       type: 'bar',
                       itemStyle: { color: '#ef4444' },
-                      name: 'Số dòng trống'
+                      name: 'Empty Rows'
                   }]
               }
           });
       } else {
-           // Nếu dữ liệu sạch hoàn toàn, hiển thị biểu đồ text
+           // If data is completely clean, show text chart
            chartOptions.push({
-              title: "Chất lượng dữ liệu",
+              title: "Data Quality",
               option: {
                   graphic: {
                       elements: [{
                           type: 'text', left: 'center', top: 'center',
-                          style: { text: 'Dữ liệu sạch (Preview không có Null)', font: 'bold 14px sans-serif', fill: '#10b981' }
+                          style: { text: 'Clean Data (No Nulls in Preview)', font: 'bold 14px sans-serif', fill: '#10b981' }
                       }]
                   }
               }
@@ -244,22 +244,22 @@ function AnalyticsContent() {
       }
   }
 
-  // --- NHÓM BIỂU ĐỒ PHÂN TÍCH (DỰA TRÊN INFERRED COLS) ---
+  // --- ANALYSIS CHARTS GROUP (BASED ON INFERRED COLS) ---
 
-  // 1. Bar Chart - Giá trị trung bình/Mẫu
+  // 1. Bar Chart - Mean/Sample values
   if (effectiveNumericCols.length > 0) {
-    // Nếu có description thì dùng mean, nếu không tính mean từ preview
+    // If description exists use mean, otherwise calculate mean from preview
     const barData = effectiveNumericCols.map(col => {
       if (data.description && data.description[col] && data.description[col]['mean']) {
           return data.description[col]['mean'];
       }
-      // Fallback tính mean từ preview
+      // Fallback calculate mean from preview
       const values = data.preview.map((row: any) => parseFloat(row[col])).filter((v: number) => !isNaN(v));
       return values.length ? values.reduce((a: number, b: number) => a + b, 0) / values.length : 0;
     });
 
     chartOptions.push({
-          title: "Giá trị trung bình (Bar Chart)",
+          title: "Mean Values (Bar Chart)",
           option: {
               tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
               xAxis: { type: 'category', data: effectiveNumericCols.slice(0, 20), axisLabel: { rotate: -45, interval: 0, fontSize: 10 } },
@@ -269,13 +269,13 @@ function AnalyticsContent() {
       });
   }
 
-  // 3b. Trend Line Chart (Giá trị theo index)
+  // 3b. Trend Line Chart (Values by index)
   if (effectiveNumericCols.length > 0 && data.preview && data.preview.length > 0) {
       const colsToShow = effectiveNumericCols.slice(0, 2);
       colsToShow.forEach(col => {
           const values = data.preview.map((row: any, idx: number) => row[col]);
           chartOptions.push({
-              title: `Xu hướng giá trị: ${col} (Top 50)`,
+              title: `Value Trend: ${col} (Top 50)`,
               option: {
                   tooltip: { trigger: 'axis' },
                   xAxis: { type: 'category', data: data.preview.map((_: any, i: number) => i + 1) },
@@ -302,7 +302,7 @@ function AnalyticsContent() {
           const barData = Object.entries(valueCounts).sort((a, b) => b[1] - a[1]).slice(0, 10);
           
           chartOptions.push({
-              title: `Phân bố: ${col} (Top 10)`,
+              title: `Distribution: ${col} (Top 10)`,
               option: {
                   tooltip: { trigger: 'axis' },
                   xAxis: { type: 'category', data: barData.map(d => d[0]), axisLabel: { rotate: -45 } },
@@ -331,7 +331,7 @@ function AnalyticsContent() {
 
         if (scatterData.length > 0) {
           chartOptions.push({
-              title: `Tương quan: ${xCol} vs ${yCol}`,
+              title: `Correlation: ${xCol} vs ${yCol}`,
               option: {
                   tooltip: { trigger: 'item' },
                   xAxis: { type: 'value', name: xCol, scale: true },
@@ -376,7 +376,7 @@ function AnalyticsContent() {
     }
 
     chartOptions.push({
-        title: "Ma trận tương quan (Heatmap)",
+        title: "Correlation Matrix (Heatmap)",
         option: {
             tooltip: { position: 'top', formatter: (params: any) => `${colsToUse[params.data[0]]} vs ${colsToUse[params.data[1]]}: ${params.data[2]}` },
             grid: { height: '60%', top: '10%' },
@@ -399,7 +399,7 @@ function AnalyticsContent() {
   if (effectiveNumericCols.length >= 3) {
       const cols = effectiveNumericCols.slice(0, 6);
       
-      // Tính mean thủ công nếu description không có
+      // Calculate mean manually if description doesn't have it
       const means = cols.map(col => {
          if (data.description?.[col]?.mean) return data.description[col].mean;
          const values = data.preview.map((row: any) => parseFloat(row[col])).filter((v: number) => !isNaN(v));
@@ -409,7 +409,7 @@ function AnalyticsContent() {
       const maxMean = Math.max(...means) || 1;
       
       chartOptions.push({
-          title: "Biểu đồ Radar (Mean Values)",
+          title: "Radar Chart (Mean Values)",
           option: {
               tooltip: { trigger: 'item' },
               radar: { indicator: cols.map(col => ({ name: col, max: maxMean * 1.2 })) },
@@ -424,9 +424,9 @@ function AnalyticsContent() {
   // FINAL FALLBACK
   if (chartOptions.length === 0) {
     chartOptions.push({
-      title: "Trạng thái dữ liệu",
+      title: "Data Status",
       option: {
-        title: { text: 'Không có biểu đồ được tạo', left: 'center', top: 'center', textStyle: { color: '#999', fontSize: 14 } },
+        title: { text: 'No charts created', left: 'center', top: 'center', textStyle: { color: '#999', fontSize: 14 } },
         series: []
       }
     });
@@ -436,15 +436,18 @@ function AnalyticsContent() {
     <div className="space-y-8 p-6">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
+            <div className="flex items-center gap-2 mb-1">
+                <a href="/history" className="text-sm text-muted-foreground hover:underline">&larr; Back to History</a>
+            </div>
             <h2 className="text-3xl font-bold tracking-tight">Analytics Report</h2>
             <p className="text-sm text-muted-foreground mt-1">
-                Hiển thị phân tích tự động cho file tải lên
+                Displaying automatic analysis for uploaded file
             </p>
         </div>
         <div className="text-sm bg-muted px-4 py-2 rounded-md border">
             <div className="font-medium">File: {data.filename}</div>
             <div className="text-xs text-muted-foreground mt-1">
-                {data.rows} dòng | {data.cols} cột ({effectiveNumericCols.length} số, {effectiveCategoricalCols.length} phân loại)
+                {data.rows} rows | {data.cols} columns ({effectiveNumericCols.length} numeric, {effectiveCategoricalCols.length} categorical)
             </div>
         </div>
       </div>
@@ -460,7 +463,7 @@ function AnalyticsContent() {
 
       <div className="grid gap-6 md:grid-cols-2">
         {chartOptions.map((chart, idx) => {
-          const isLarge = chart.title.includes("Heatmap") || chart.title.includes("Ma trận") || chart.title.includes("Radar") || chart.title.includes("Cấu trúc");
+          const isLarge = chart.title.includes("Heatmap") || chart.title.includes("Correlation Matrix") || chart.title.includes("Radar") || chart.title.includes("Data Structure");
           return (
             <ChartWidget 
               key={idx} 
@@ -475,7 +478,7 @@ function AnalyticsContent() {
       {/* Data Preview Table */}
       <div className="border rounded-lg overflow-hidden">
             <div className="bg-muted p-4 border-b">
-                <h3 className="text-lg font-semibold">Dữ liệu chi tiết (Preview 50 dòng đầu)</h3>
+                <h3 className="text-lg font-semibold">Detailed Data (Preview First 50 Rows)</h3>
             </div>
             <div className="overflow-x-auto max-h-[500px]">
                 <table className="w-full text-sm text-left">

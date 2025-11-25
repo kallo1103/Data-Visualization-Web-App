@@ -167,9 +167,14 @@ export function UploadZone() {
                         <div className="flex flex-col items-center gap-2">
                             <p className="text-sm text-muted-foreground capitalize">Status: {processingStatus}</p>
                             {processingStatus === "SUCCESS" && (
-                                <Button asChild size="sm" variant="secondary">
-                                    <a href={`/analytics?taskId=${taskId}`}>View Analysis</a>
-                                </Button>
+                                <div className="flex gap-2">
+                                  <Button asChild size="sm" variant="secondary">
+                                      <a href={`/analytics?taskId=${taskId}`}>View Analysis</a>
+                                  </Button>
+                                  <Button asChild size="sm" variant="outline">
+                                      <a href="/history">View History</a>
+                                  </Button>
+                                </div>
                             )}
                         </div>
                     )}
